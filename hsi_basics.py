@@ -17,16 +17,16 @@ for idx in range(len(dataset)):
     
     HSIreader.read_image(idx)
     metadata = HSIreader.current_metadata
-    # rgb= HSIreader.get_rgb()
+    rgb= HSIreader.get_rgb()
     
-    # plt.figure() 
-    # plt.imshow(rgb)
-    # plt.title("RGB Image")
-    # plt.axis('off')
-    # plt.show()
+    plt.figure() 
+    plt.imshow(rgb)
+    plt.title("RGB Image")
+    plt.axis('off')
+    plt.show()
 
-    # HSIreader.get_spectrum()
+    HSIreader.get_spectrum()
     
     
-    # HSIreader.clear_cache()
+    HSIreader.clear_cache()
     
