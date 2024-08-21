@@ -251,3 +251,94 @@ class HsiReader:
             return None, None
             
             
+    def project_pca_scores(self, loadings, mask=None):
+        """
+        Compute PCA scores for the entire hyperspectral image using precomputed PCA loadings.
+        
+        Parameters:
+        - loadings (np.ndarray): Precomputed PCA loadings (n_bands, n_components).
+        - mask (np.ndarray): Optional 2D boolean mask (height, width), where True indicates the pixel to use.
+        
+        Returns:
+        - pca_scores_img (np.ndarray): The PCA scores reshaped to the image's spatial dimensions (height, width, n_components).
+        """
+        # Ensure the HSI data is loaded
+        if self.hypercube is None:
+            if self.current_image is None:
+                print("No image has been read. Please call `read_image()` first.")
+                return None
+            else:
+                self.hypercube = self.current_image.load()
+
+        # Get the shape of the hypercube
+        height, width, n_bands = self.hypercube.shape
+        
+        # Ensure loadings have the correct shape
+        if loadings.shape[0] != n_bands:
+            raise ValueError(f"Loadings should have shape (n_bands, n_components), but got {loadings.shape}.")
+        
+        # Apply the mask if provided
+        if mask is not None:
+            # Ensure the mask is the same size as the image
+            if mask.shape != (height, width):
+                raise ValueError("Mask shape must match the spatial dimensions of the hypercube.")
+            
+            # Flatten the hypercube only at mask locations
+            flattened_hypercube = self.hypercube[mask].reshape(-1, n_bands)
+        else:
+            # Flatten the entire hypercube
+            flattened_hypercube = self.hypercube.reshape(-1, n_bands)
+        
+        # Project the spectral data onto the PCA loadings (principal components)
+        pca_scores = np.dot(flattened_hypercube, loadings)
+        
+        # If a mask was applied, we need to re-insert the PCA scores into the full image shape
+        if mask is not None:
+            # Create an empty array to hold the full PCA score image
+            pca_scores_img = np.zeros((height, width, loadings.shape[1]))
+            
+            # Insert the PCA scores only at the mask locations
+            pca_scores_img[mask] = pca_scores
+        else:
+            # Reshape the PCA scores back to the original image's spatial dimensions
+            pca_scores_img = pca_scores.reshape(height, width, loadings.shape[1])
+        
+        return pca_scores_img
+    
+
+def color_labels(labeled_image):
+    num_colors = len(np.unique(labeled_image)) - 2  
+    colors = generate_custom_colors(num_colors)
+    # Initialize a color image
+    color_image = np.zeros((labeled_image.shape[0], labeled_image.shape[1], 3))
+
+    # Set color for label 0 (black)
+    color_image[labeled_image == 0] = [0, 0, 0]
+
+    # Set color for label 1 (white)
+    color_image[labeled_image == 1] = [0.5, 0.5, 0.5]
+
+    # Create a palette for other labels
+    unique_labels = np.unique(labeled_image)
+    for label_value in unique_labels:
+        if label_value > 1:
+            color_idx = (label_value - 2) % num_colors  # Ensure index is within range
+            color_image[labeled_image == label_value] = colors[color_idx]
+    
+    
+    return color_image
+
+from matplotlib.colors import hsv_to_rgb
+def generate_custom_colors(num_colors):
+    """
+    Generate a list of diverse colors using HSL color space.
+    """
+    colors = []
+    np.random.seed(0)  # For reproducibility
+    for _ in range(num_colors):
+        hue = np.random.rand()  # Random hue value between 0 and 1
+        saturation = np.random.uniform(0.5, 0.9)  # Random saturation to avoid too pure colors
+        lightness = np.random.uniform(0.3, 0.7)  # Random lightness to avoid too bright or dark colors
+        color = hsv_to_rgb([hue, saturation, lightness])  # Convert to RGB
+        colors.append(color)
+    return colors

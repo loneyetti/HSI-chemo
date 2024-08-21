@@ -1,10 +1,5 @@
 import spectral.io.envi as envi
-
-import tensorly as tl
-import numpy as np
-
 import matplotlib.pyplot as plt
-
 from hsi_utils import *
 
 
