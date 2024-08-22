@@ -12,15 +12,23 @@ for idx in range(len(dataset)):
     
     HSIreader.read_image(idx)
     metadata = HSIreader.current_metadata
-    rgb= HSIreader.get_rgb()
+    wv =HSIreader.get_wavelength()
+    wv = [int(l) for l in wv]
     
+    
+    rgb= HSIreader.get_rgb()
     plt.figure() 
     plt.imshow(rgb)
-    plt.title("RGB Image")
+    plt.title("Pseudo RGB Image")
     plt.axis('off')
     plt.show()
 
     HSIreader.get_spectrum()
+    
+    hypercube=HSIreader.get_hsi()
+    
+    
+    
     
     
     HSIreader.clear_cache()
