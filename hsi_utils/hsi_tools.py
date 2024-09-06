@@ -89,7 +89,33 @@ class HsiReader:
             self.current_metadata = None
             self.current_image = None
             self.current_idx = None
+    def read_subimage(self, bbox):
+        if not self.current_image:
+            raise ValueError("No current image loaded. Call `read_image` first.")
+        
+        min_row, min_col, max_row, max_col = bbox
+        bands = list(range(self.current_image.shape[2]))
+        try:
+            # Check if 'bands' is None or not
+            if bands is None:
+                bands = list(range(self.current_image.shape[2]))  # Assuming last dimension is bands
             
+            # Read the specific sub-cube from the image
+            subcube = self.current_image.read_subregion(
+                (min_row, max_row),
+                (min_col, max_col),
+                bands=bands
+            )
+            return subcube
+        
+
+        except Exception as e:
+            print(f"Error reading subimage: {e}")
+            return None
+        
+        
+        
+          
     def get_hsi(self, idx=None):
         """
         Loads the image data for the specified index if provided.

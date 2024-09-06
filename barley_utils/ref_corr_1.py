@@ -8,6 +8,9 @@ from scipy.ndimage import binary_fill_holes
 from skimage.morphology import remove_small_objects
 from skimage.measure import label
 
+
+#from tkinter import Tk
+#from tkinter.filedialog import askdirectory
 """
     Automatically correct HSI in reflectance from the reference in the image
     Segment image with PCA projection -> get the reference
@@ -20,7 +23,8 @@ from skimage.measure import label
 
 
 # Define the path to the main data folder: code will iterate trough relvant files
-main_data_folder = "D:\\HSI data\\micro_SWIR"     
+main_data_folder = "D:/20240816_Barley_SWIR_micro_germinated"
+#main_data_folder = askdirectory(title='Select Folder')   
 
 # Initialize the HSI dataset and define file extension: contains all paths of hdr and data files
 dataset =HsiDataset(main_data_folder,data_ext='hyspex')
@@ -62,12 +66,12 @@ for idx in range(len(dataset)):
     #project back the laodings on the entire hsi to get scores
     score_img = HSIreader.project_pca_scores(pca_loadings)
    
-    # for s in range(pca_loadings.shape[1]):
-    #     plt.figure()
-    #     plt.imshow(score_img[:,:,s])
-    #     plt.title(f'Score image PC{s+1}')
-    #     plt.axis('off')
-    #     plt.show(block=False)
+    #for s in range(pca_loadings.shape[1]):
+     #    plt.figure()
+     #    plt.imshow(score_img[:,:,s])
+     #    plt.title(f'Score image PC{s+1}')
+     #    plt.axis('off')
+     #    plt.show(block=False)
     
     # automatic thresholding with Ostu method (histogram based)
     score_pc_ref = score_img[:,:,0]   
@@ -75,7 +79,7 @@ for idx in range(len(dataset)):
     segmented = np.digitize(score_pc_ref, bins=thresholds)
     
     # plt.figure()
-    # plt.imshow(segmented)
+     #plt.imshow(segmented)
     # plt.show(block=False)
     
     #get a labelled image 
@@ -104,7 +108,7 @@ for idx in range(len(dataset)):
     
     # color_image = color_labels(labeled_image)
         
-    # plt.figure()
+   #  plt.figure()
     # plt.imshow(color_image)
     # plt.title('Color-Mapped Labeled Image')
     # plt.axis('off')

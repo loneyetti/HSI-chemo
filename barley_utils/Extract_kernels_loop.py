@@ -1,3 +1,12 @@
+# -*- coding: utf-8 -*-
+"""
+Created on Wed Sep  4 14:51:06 2024
+
+@author: sebas
+"""
+
+import os
+import numpy as np
 import spectral.io.envi as envi
 import matplotlib.pyplot as plt
 from hsi_utils import *
@@ -6,25 +15,26 @@ from sklearn.decomposition import PCA
 from skimage.filters import threshold_multiotsu
 from scipy.ndimage import binary_fill_holes
 from skimage.morphology import remove_small_objects
-from skimage.measure import label
-from skimage.measure import regionprops
+from skimage.measure import label, regionprops
 import pickle
 
-main_data_folder = "D:\HSI data\micro_SWIR"   
-dataset =HsiDataset(main_data_folder,data_ext='ref')
+main_data_folder = "D:\\20240816_Barley_SWIR_micro_germinated\\ref_corrected" 
+dataset = HsiDataset(main_data_folder, data_ext='ref')
 
 HSIreader = HsiReader(dataset)
 
-min_pixel_area = 1000
-padding = 1000
+# Define your pixel area threshold here
+min_pixel_area = 1000  # Adjust this value as needed
+padding = 200000 # increase the bounding box size by x pixels in each direction
 
 for idx in range(len(dataset)):
+    
     HSIreader.read_image(idx)
     metadata = HSIreader.current_metadata
-    wv =HSIreader.get_wavelength()
+    wv = HSIreader.get_wavelength()
     wv = [int(l) for l in wv]
     
-    hypercube= HSIreader.get_hsi()
+    hypercube = HSIreader.get_hsi()
     n_samples = 10000
     
     x_idx = np.random.randint(0, hypercube.shape[0], size=n_samples)
@@ -32,40 +42,28 @@ for idx in range(len(dataset)):
     
     spectral_samples = hypercube[x_idx, y_idx, :]
 
-    nb_pca_comp =3
+    nb_pca_comp = 3
     pca = PCA(n_components=nb_pca_comp)
     pca_scores = pca.fit_transform(spectral_samples)
-    pca_loadings =pca.components_.T*np.sqrt(pca.explained_variance_)
-    
+    pca_loadings = pca.components_.T * np.sqrt(pca.explained_variance_)
     
     default_colors = plt.rcParams['axes.prop_cycle'].by_key()['color']
 
     # for i in range(np.shape(pca_loadings)[1]):
     #     plt.figure()
-    #     plt.plot(wv,pca_loadings[:,i],default_colors[i])
+    #     plt.plot(wv, pca_loadings[:, i], default_colors[i])
     #     plt.xlabel("Wavelength (nm)")
     #     plt.ylabel("Reflectance")  
-    #     lab= 'PC'+str(i+1)
+    #     lab = 'PC' + str(i + 1)
     #     plt.title(lab) 
     #     plt.grid()  
     # plt.show(block=False)
     
     score_img = HSIreader.project_pca_scores(pca_loadings)
    
-    # for s in range(pca_loadings.shape[1]):
-    #     plt.figure()
-    #     plt.imshow(score_img[:,:,s])
-    #     plt.title(f'Score image PC{s+1}')
-    #     plt.axis('off')
-    #     plt.show(block=False)
-       
-    score_pc_ref = score_img[:,:,1]   
+    score_pc_ref = score_img[:, :, 1]   
     thresholds = threshold_multiotsu(score_pc_ref, classes=2)
     segmented = np.digitize(score_pc_ref, bins=thresholds)
-    
-    # plt.figure()
-    # plt.imshow(segmented)
-    # plt.show(block=False)
     
     labeled_image = label(segmented)
     
@@ -73,38 +71,27 @@ for idx in range(len(dataset)):
     
     filled_binary_image = binary_fill_holes(binary_image)
     
-    # plt.figure()
-    # plt.imshow(filled_binary_image)
-    # plt.show(block=False)
-    
     labeled_image = label(filled_binary_image)
-    labeled_image= label(remove_small_objects(labeled_image > 0, min_size=20))
-    
+    labeled_image = label(remove_small_objects(labeled_image > 0, min_size=20))
     
     color_image = color_labels(labeled_image)
-        
-    # plt.figure()
-    # plt.imshow(color_image)
-    # plt.title('Color-Mapped Labeled Image')
-    # plt.axis('off')
-    # plt.show()
-    
     
     regions = regionprops(labeled_image)
+    print(f"Number of regions found: {len(regions)}")
     object_data = []
     
     for region in regions:
         # Get the object ID (label)
         obj_id = region.label
-      
         
-         # Skip the background (label 0)
+        # Skip the background (label 0)
         if obj_id == 0:
             continue
+        
+        # Filter out regions based on pixel area
         if region.area < min_pixel_area:
             continue
-       
-        # Filter out regions based on pixel are
+        
         # Get the centroid coordinates
         centroid = region.centroid
         
@@ -122,30 +109,68 @@ for idx in range(len(dataset)):
         
         # Store in dictionary
         object_data.append({
-        'id': obj_id,
-        'centroid': centroid,
-        'pixels': pixel_coords,
-        'bbox': (min_row, min_col, max_row, max_col)
-    })
+            'id': obj_id,
+            'centroid': centroid,
+            'pixels': pixel_coords,
+            'bbox': (min_row, min_col, max_row, max_col)  # Store the expanded bounding box
+        })
 
     object_data.sort(key=lambda x: (x['centroid'][1], x['centroid'][0]))
-    for new_id, obj in enumerate(object_data, start=1):
-        obj['id'] = new_id
-
 
     # Convert list to dictionary with ordered keys
     ordered_object_data = {obj['id']: obj for obj in object_data}
 
-    base_name = os.path.basename(HSIreader.dataset[idx]['data'])
-    base_name = os.path.splitext(base_name)[0]
-    object_folder = os.path.join(main_data_folder, 'Kernels_objects')
-
     # Create the object folder if it doesn't exist
+    object_folder = os.path.join(main_data_folder, 'object')
     os.makedirs(object_folder, exist_ok=True)
 
+    # Create a filename based on the index (e.g., 'object_0001.pkl')
+    image_file_name = f'object_{idx:04d}.pkl'
+
     # Full path for saving the file
-    file_path = os.path.join(object_folder, f'{base_name}.pkl')
+    file_path = os.path.join(object_folder, image_file_name)
 
     # Save the ordered dictionary to a file using pickle
     with open(file_path, 'wb') as f:
         pickle.dump(ordered_object_data, f)
+        
+#%%
+
+import os
+import pickle
+import scipy.io as sio
+import numpy as np
+
+# Load the saved object data from the pickle file
+main_data_folder = "D:\\SWIR_sub_imtest" 
+object_folder = os.path.join(main_data_folder, 'object')
+object_file = 'object_0000.pkl'
+file_path = os.path.join(object_folder, object_file)
+
+with open(file_path, 'rb') as f:
+    ordered_object_data = pickle.load(f)
+
+# Prepare data for MATLAB
+matlab_data = {}
+
+for obj_id, obj_data in ordered_object_data.items():
+    centroid = np.array(obj_data['centroid'])
+    pixel_coords = np.array(obj_data['pixels'])
+    
+    # Calculate bounding box (assuming pixel_coords contains (row, col) pairs)
+    min_row, min_col = np.min(pixel_coords, axis=0)
+    max_row, max_col = np.max(pixel_coords, axis=0)
+    
+    # Store in a dictionary compatible with MATLAB structure
+    matlab_data[f'object_{obj_id}'] = {
+        'centroid': centroid,
+        'pixels': pixel_coords,
+        'bbox': [min_row, min_col, max_row, max_col]
+    }
+
+# Save the data as a .mat file
+mat_file_path = os.path.join(object_folder, 'object_0000.mat')
+sio.savemat(mat_file_path, matlab_data)
+
+
+    
