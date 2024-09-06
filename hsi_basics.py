@@ -3,7 +3,8 @@ import matplotlib.pyplot as plt
 from hsi_utils import *
 
 
-main_data_folder = "D:\\HSI data\\Barley_ground_30cm_SWIR"     
+# main_data_folder = "D:\\HSI data\\Barley_ground_30cm_SWIR"     
+main_data_folder = "D:\\HSI data\\micro_SWIR"     
 dataset =HsiDataset(main_data_folder,data_ext='hyspex')
 
 HSIreader = HsiReader(dataset)
