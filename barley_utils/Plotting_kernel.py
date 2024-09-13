@@ -7,7 +7,7 @@ import spectral.io.envi as envi
 
 # Define paths and constants
 main_data_folder = "D:\\SWIR_sub_imtest"
-object_folder = os.path.join(main_data_folder, 'object')
+object_folder = os.path.join(main_data_folder, 'Kernels_objects')
 num_images_to_plot = 1  # Adjust this as needed
 band_index = 100  # Select a spectral band to display (this is just an example)
 

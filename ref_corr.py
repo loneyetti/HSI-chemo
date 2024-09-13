@@ -20,7 +20,7 @@ from skimage.measure import label
 
 
 # Define the path to the main data folder: code will iterate trough relvant files
-main_data_folder = "D:\\HSI data\\micro_SWIR"     
+main_data_folder = "D:\\VNIR_Hessekwa_nodamage"
 
 # Initialize the HSI dataset and define file extension: contains all paths of hdr and data files
 dataset =HsiDataset(main_data_folder,data_ext='hyspex')
